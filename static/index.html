@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班级文件收集系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 导航栏 -->
+        <nav class="navbar" id="navbar" style="display: none;">
+            <h1>📋 班级文件收集系统</h1>
+            <div class="navbar-menu">
+                <a href="#" onclick="showPage('dashboard')" class="active" data-page="dashboard">首页</a>
+                <a href="#" onclick="showPage('organization')" data-page="organization">组织管理</a>
+                <a href="#" onclick="showPage('members')" data-page="members">成员管理</a>
+                <a href="#" onclick="showPage('tasks')" data-page="tasks">收集任务</a>
+                <a href="#" onclick="showPage('settings')" data-page="settings">系统设置</a>
+                <a href="#" onclick="logout()">退出</a>
+            </div>
+        </nav>
+
+        <!-- 登录页面 -->
+        <div id="login-page" class="login-container">
+            <div class="login-box">
+                <h2 class="login-title">📋 班级文件收集系统</h2>
+                <div id="setup-form" style="display: none;">
+                    <p style="text-align: center; margin-bottom: 20px; color: #666;">首次使用，请设置管理员账号</p>
+                    <div class="form-group">
+                        <label class="form-label">用户名</label>
+                        <input type="text" id="setup-username" class="form-control" placeholder="请输入用户名">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">密码</label>
+                        <input type="password" id="setup-password" class="form-control" placeholder="请输入密码（至少6位）">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">确认密码</label>
+                        <input type="password" id="setup-password2" class="form-control" placeholder="请再次输入密码">
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%;" onclick="setupAdmin()">创建管理员</button>
+                </div>
+                <div id="login-form">
+                    <div class="form-group">
+                        <label class="form-label">用户名</label>
+                        <input type="text" id="login-username" class="form-control" placeholder="请输入用户名">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">密码</label>
+                        <input type="password" id="login-password" class="form-control" placeholder="请输入密码">
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%;" onclick="login()">登录</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="container" id="main-content" style="display: none;">
+            <!-- 仪表板 -->
+            <div id="page-dashboard" class="page">
+                <h2 style="margin-bottom: 20px;">欢迎使用班级文件收集系统</h2>
+                <div class="stats-grid" id="dashboard-stats"></div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">最近任务</h3>
+                    </div>
+                    <div id="recent-tasks"></div>
+                </div>
+            </div>
+
+            <!-- 组织管理 -->
+            <div id="page-organization" class="page" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">学院管理</h3>
+                        <button class="btn btn-primary btn-sm" onclick="showAddCollegeModal()">+ 添加学院</button>
+                    </div>
+                    <div id="college-list"></div>
+                </div>
+            </div>
+
+            <!-- 成员管理 -->
+            <div id="page-members" class="page" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">成员管理</h3>
+                        <div>
+                            <button class="btn btn-secondary btn-sm" onclick="downloadTemplate()">下载模板</button>
+                            <button class="btn btn-success btn-sm" onclick="showImportModal()">导入成员</button>
+                            <button class="btn btn-primary btn-sm" onclick="showAddMemberModal()">+ 添加成员</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <select id="member-class-filter" class="form-control" onchange="loadMembers()" style="max-width: 300px;">
+                            <option value="">请选择班级</option>
+                        </select>
+                    </div>
+                    <div id="member-list"></div>
+                </div>
+            </div>
+
+            <!-- 收集任务 -->
+            <div id="page-tasks" class="page" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">收集任务</h3>
+                        <button class="btn btn-primary btn-sm" onclick="showAddTaskModal()">+ 创建任务</button>
+                    </div>
+                    <div class="form-group">
+                        <select id="task-class-filter" class="form-control" onchange="loadTasks()" style="max-width: 300px;">
+                            <option value="">全部班级</option>
+                        </select>
+                    </div>
+                    <div id="task-list"></div>
+                </div>
+            </div>
+
+            <!-- 系统设置 -->
+            <div id="page-settings" class="page" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">命名格式设置</h3>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">导出文件命名格式</label>
+                        <input type="text" id="naming-format" class="form-control" placeholder="{student_id}_{name}">
+                        <small style="color: #666;">可用变量: {student_id}, {name}, {gender}, {dormitory}</small>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveNamingFormat()">保存</button>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">邮箱配置</h3>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">SMTP服务器</label>
+                        <input type="text" id="smtp-host" class="form-control" placeholder="smtp.qq.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">端口</label>
+                        <input type="number" id="smtp-port" class="form-control" placeholder="465">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">邮箱账号</label>
+                        <input type="text" id="smtp-user" class="form-control" placeholder="your-email@qq.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">授权码</label>
+                        <input type="password" id="smtp-password" class="form-control" placeholder="SMTP授权码">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveEmailConfig()">保存邮箱配置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框 -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">标题</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

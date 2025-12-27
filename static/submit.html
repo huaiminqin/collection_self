@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>提交 - 班级文件收集系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .submit-container { max-width: 700px; margin: 30px auto; padding: 20px; }
+        .task-info { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .task-title { font-size: 1.4rem; color: #333; margin-bottom: 10px; font-weight: 600; }
+        .task-deadline { color: #666; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .task-deadline.expired { color: #dc3545; }
+        .collect-types { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; }
+        .collect-type-badge { padding: 4px 10px; border-radius: 15px; font-size: 12px; background: #e8f4fd; color: #0066cc; }
+        .upload-box { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .section-title { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+        .upload-area { border: 2px dashed #e0e0e0; border-radius: 12px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 15px; background: #fafafa; }
+        .upload-area:hover, .upload-area.dragover { border-color: #667eea; background: rgba(102, 126, 234, 0.05); }
+        .upload-area.has-file { border-color: #28a745; background: #d4edda; }
+        .upload-icon { font-size: 36px; margin-bottom: 8px; }
+        .selected-file { background: #e8f5e9; padding: 10px 15px; border-radius: 8px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .selected-file .name { font-weight: 500; color: #2e7d32; }
+        .selected-file .remove { color: #dc3545; cursor: pointer; }
+        .text-input-area { width: 100%; min-height: 120px; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; resize: vertical; }
+        .questionnaire-form { padding: 5px 0; }
+        .question-item { margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; }
+        .question-title { font-weight: 500; margin-bottom: 10px; color: #333; font-size: 14px; }
+        .question-title .required { color: #dc3545; }
+        .option-item { margin: 6px 0; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+        .visibility-option { margin: 15px 0; padding: 12px; background: #f8f9fa; border-radius: 8px; }
+        .visibility-option label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+        .submit-btn { width: 100%; padding: 15px; font-size: 16px; font-weight: 600; }
+        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .submission-history { margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
+        .submission-history h4 { color: #333; margin-bottom: 12px; font-weight: 600; font-size: 14px; }
+        .submission-item { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 8px; }
+        .submission-item-header { display: flex; justify-content: space-between; align-items: center; }
+        .submission-file-info { display: flex; align-items: center; gap: 10px; }
+        .submission-file-icon { font-size: 20px; }
+        .submission-file-name { font-weight: 500; color: #333; font-size: 13px; }
+        .submission-file-meta { font-size: 11px; color: #999; }
+        .error-page { text-align: center; padding: 80px 20px; background: white; border-radius: 12px; }
+        .status-section { margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
+        .status-section h4 { color: #333; margin-bottom: 12px; font-weight: 600; font-size: 14px; }
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+        .status-item { padding: 10px; border-radius: 8px; text-align: center; font-size: 13px; cursor: pointer; }
+        .status-item.submitted { background: #d4edda; color: #155724; }
+        .status-item.not-submitted { background: #fff3cd; color: #856404; }
+        .success-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .success-modal.active { display: flex; }
+        .success-content { background: white; border-radius: 16px; padding: 40px; text-align: center; max-width: 400px; }
+        .success-icon { font-size: 64px; margin-bottom: 20px; }
+        .success-title { font-size: 24px; font-weight: 600; color: #28a745; margin-bottom: 10px; }
+        .success-msg { color: #666; margin-bottom: 20px; }
+        .collect-section { margin-bottom: 20px; padding: 15px; background: #fafafa; border-radius: 10px; }
+        .collect-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-weight: 600; color: #333; }
+    </style>
+</head>
+<body>
+    <div class="navbar"><h1>📁 班级文件收集系统</h1></div>
+
+    <div class="submit-container">
+        <div id="loading" class="task-info" style="text-align: center;"><p>加载中...</p></div>
+        <div id="error-page" class="error-page" style="display: none;"><h2>😕 任务不存在</h2><p>请检查链接是否正确</p></div>
+
+        <div id="task-content" style="display: none;">
+            <div class="task-info">
+                <h2 class="task-title" id="task-title"></h2>
+                <p id="task-desc" style="color: #666; margin-bottom: 12px; font-size: 14px;"></p>
+                <p class="task-deadline" id="task-deadline"></p>
+                <div class="collect-types" id="collect-types"></div>
+                <div class="progress" style="margin-bottom: 8px;"><div class="progress-bar" id="progress-bar" style="width: 0%"></div></div>
+                <p style="font-size: 13px; color: #666;" id="progress-text"></p>
+                
+                <div id="status-section" class="status-section" style="display: none;">
+                    <h4>👥 提交状态</h4>
+                    <div id="status-grid" class="status-grid"></div>
+                </div>
+            </div>
+
+            <div class="upload-box">
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label class="form-label">选择你的名字</label>
+                    <select id="member-select" class="form-control" onchange="onMemberSelect()">
+                        <option value="">-- 请选择 --</option>
+                    </select>
+                </div>
+
+                <div id="submit-section" style="display: none;">
+                    <!-- 文件收集区 -->
+                    <div id="file-section" class="collect-section" style="display:none;">
+                        <div class="collect-section-header">📁 上传文件</div>
+                        <div class="upload-area" id="upload-area-file" onclick="document.getElementById('file-input').click()">
+                            <div class="upload-icon">📤</div>
+                            <p>点击或拖拽文件到此处</p>
+                            <p style="font-size: 12px; color: #999;" id="allowed-types"></p>
+                        </div>
+                        <input type="file" id="file-input" style="display: none;" onchange="onFileSelect('file')">
+                        <div id="file-selected" style="display:none;"></div>
+                    </div>
+                    
+                    <!-- 图片收集区 -->
+                    <div id="image-section" class="collect-section" style="display:none;">
+                        <div class="collect-section-header">🖼️ 上传图片</div>
+                        <div class="upload-area" id="upload-area-image" onclick="document.getElementById('image-input').click()">
+                            <div class="upload-icon">🖼️</div>
+                            <p>点击或拖拽图片到此处</p>
+                            <p style="font-size: 12px; color: #999;">支持: jpg, jpeg, png, gif, webp</p>
+                        </div>
+                        <input type="file" id="image-input" accept="image/*" style="display: none;" onchange="onFileSelect('image')">
+                        <div id="image-selected" style="display:none;"></div>
+                        <div id="image-preview" style="display:none;text-align:center;margin-top:10px;"><img id="preview-img" style="max-width:100%;max-height:150px;border-radius:8px;"></div>
+                    </div>
+                    
+                    <!-- 文本收集区 -->
+                    <div id="text-section" class="collect-section" style="display:none;">
+                        <div class="collect-section-header">📝 填写文本</div>
+                        <textarea id="text-content" class="text-input-area" placeholder="请输入文本内容..."></textarea>
+                    </div>
+                    
+                    <!-- 问卷收集区 -->
+                    <div id="questionnaire-section" class="collect-section" style="display:none;">
+                        <div class="collect-section-header">📋 填写问卷</div>
+                        <div id="questionnaire-form" class="questionnaire-form"></div>
+                    </div>
+                    
+                    <div id="visibility-option" class="visibility-option" style="display:none;">
+                        <label><input type="checkbox" id="is-private"> 🔒 仅管理员可见（其他同学看不到我的提交）</label>
+                    </div>
+                    
+                    <button class="btn btn-primary submit-btn" id="submit-btn" onclick="submitAll()">
+                        📤 一键提交全部内容
+                    </button>
+
+                    <div class="submission-history">
+                        <h4>📄 我的提交记录</h4>
+                        <div id="my-submissions"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成功弹窗 -->
+    <div id="success-modal" class="success-modal" onclick="closeSuccessModal()">
+        <div class="success-content" onclick="event.stopPropagation()">
+            <div class="success-icon">✅</div>
+            <div class="success-title">提交成功！</div>
+            <div class="success-msg" id="success-msg">您的内容已成功提交</div>
+            <button class="btn btn-primary" onclick="closeSuccessModal()" style="width:100%;">确定</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/v1';
+        let taskId = null;
+        let taskData = null;
+        let selectedMemberId = null;
+        let allMembers = [];
+        
+        // 存储选择的文件
+        let selectedFiles = { file: null, image: null };
+
+        function getTaskId() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('task_id') || params.get('id');
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            taskId = getTaskId();
+            if (!taskId) { showError(); return; }
+            await loadTask();
+            setupDragDrop();
+        });
+
+        async function loadTask() {
+            try {
+                const res = await fetch(`${API_BASE}/tasks/${taskId}`);
+                if (!res.ok) { showError(); return; }
+                taskData = await res.json();
+                await renderTask();
+            } catch (e) {
+                console.error(e);
+                showError();
+            }
+        }
+
+        function showError() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error-page').style.display = 'block';
+        }
+
+        async function renderTask() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('task-content').style.display = 'block';
+
+            document.getElementById('task-title').textContent = taskData.title;
+            document.getElementById('task-desc').textContent = taskData.description || '';
+
+            const deadlineEl = document.getElementById('task-deadline');
+            if (taskData.deadline) {
+                const deadline = new Date(taskData.deadline);
+                const isExpired = deadline < new Date();
+                deadlineEl.innerHTML = `<span>📅</span> 截止时间：${deadline.toLocaleString()}`;
+                if (isExpired) {
+                    deadlineEl.classList.add('expired');
+                    deadlineEl.innerHTML += ' <span class="badge badge-danger">已截止</span>';
+                }
+            } else {
+                deadlineEl.innerHTML = '<span>📅</span> 无截止时间';
+            }
+
+            // 显示收集类型
+            const ct = taskData.collect_types || { file: true };
+            let typesHtml = '';
+            if (ct.file) typesHtml += '<span class="collect-type-badge">📁 文件</span>';
+            if (ct.image) typesHtml += '<span class="collect-type-badge">🖼️ 图片</span>';
+            if (ct.text) typesHtml += '<span class="collect-type-badge">📝 文本</span>';
+            if (ct.questionnaire) typesHtml += '<span class="collect-type-badge">📋 问卷</span>';
+            document.getElementById('collect-types').innerHTML = typesHtml;
+
+            // 显示对应的收集区域
+            if (ct.file) document.getElementById('file-section').style.display = 'block';
+            if (ct.image) document.getElementById('image-section').style.display = 'block';
+            if (ct.text) document.getElementById('text-section').style.display = 'block';
+            if (ct.questionnaire) {
+                document.getElementById('questionnaire-section').style.display = 'block';
+                renderQuestionnaire();
+            }
+
+            if (taskData.stats) {
+                const stats = taskData.stats;
+                const progress = stats.total_members > 0 ? (stats.submitted_count / stats.total_members * 100) : 0;
+                document.getElementById('progress-bar').style.width = progress + '%';
+                document.getElementById('progress-text').textContent = `已提交 ${stats.submitted_count}/${stats.total_members} 人 (${progress.toFixed(1)}%)`;
+            }
+
+            if (taskData.allowed_types && taskData.allowed_types.length > 0) {
+                document.getElementById('allowed-types').textContent = `允许: ${taskData.allowed_types.join(', ')}`;
+            }
+
+            if (!taskData.admin_only_visible && taskData.allow_user_set_visibility) {
+                document.getElementById('visibility-option').style.display = 'block';
+            }
+
+            await loadMembers();
+            if (!taskData.admin_only_visible) renderSubmissionStatus();
+        }
+
+        function renderQuestionnaire() {
+            const config = taskData.questionnaire_config || [];
+            let html = '';
+            config.forEach((q, idx) => {
+                html += `<div class="question-item">
+                    <div class="question-title">${idx + 1}. ${q.title} ${q.required ? '<span class="required">*</span>' : ''}</div>`;
+                
+                if (q.type === 'text') {
+                    html += `<textarea class="form-control q-input" data-idx="${idx}" rows="2" placeholder="请输入..."></textarea>`;
+                } else if (q.type === 'radio') {
+                    html += (q.options || []).map(opt => 
+                        `<div class="option-item"><input type="radio" name="q${idx}" value="${opt}" data-idx="${idx}"> ${opt}</div>`
+                    ).join('');
+                } else if (q.type === 'checkbox') {
+                    html += (q.options || []).map(opt => 
+                        `<div class="option-item"><input type="checkbox" name="q${idx}" value="${opt}" data-idx="${idx}"> ${opt}</div>`
+                    ).join('');
+                } else if (q.type === 'image') {
+                    html += `<input type="file" class="form-control q-file" data-idx="${idx}" data-type="image" accept="image/*">`;
+                } else if (q.type === 'file') {
+                    html += `<input type="file" class="form-control q-file" data-idx="${idx}" data-type="file">`;
+                }
+                html += '</div>';
+            });
+            document.getElementById('questionnaire-form').innerHTML = html;
+        }
+
+        async function loadMembers() {
+            try {
+                const res = await fetch(`${API_BASE}/tasks/${taskId}/members`);
+                allMembers = await res.json();
+                
+                const select = document.getElementById('member-select');
+                select.innerHTML = '<option value="">-- 请选择 --</option>';
+                allMembers.forEach(m => {
+                    const option = document.createElement('option');
+                    option.value = m.id;
+                    option.textContent = `${m.student_id} - ${m.name}` + (m.has_submitted ? ' ✓' : '');
+                    select.appendChild(option);
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function renderSubmissionStatus() {
+            const section = document.getElementById('status-section');
+            const grid = document.getElementById('status-grid');
+            if (allMembers.length === 0) { section.style.display = 'none'; return; }
+            section.style.display = 'block';
+            grid.innerHTML = allMembers.map(m => `
+                <div class="status-item ${m.has_submitted ? 'submitted' : 'not-submitted'}">
+                    <div class="name">${m.name}</div>
+                    <div class="badge">${m.has_submitted ? '✓' : '未交'}</div>
+                </div>
+            `).join('');
+        }
+
+        async function onMemberSelect() {
+            const memberId = document.getElementById('member-select').value;
+            if (!memberId) {
+                document.getElementById('submit-section').style.display = 'none';
+                return;
+            }
+            selectedMemberId = memberId;
+            document.getElementById('submit-section').style.display = 'block';
+            await loadMySubmissions();
+        }
+
+        async function loadMySubmissions() {
+            try {
+                const res = await fetch(`${API_BASE}/submissions/?task_id=${taskId}&member_id=${selectedMemberId}`);
+                const submissions = await res.json();
+                
+                const list = document.getElementById('my-submissions');
+                if (submissions.length === 0) {
+                    list.innerHTML = '<p style="color: #999; text-align: center; padding: 15px; font-size: 13px;">暂无提交记录</p>';
+                } else {
+                    list.innerHTML = submissions.map(s => `
+                        <div class="submission-item">
+                            <div class="submission-item-header">
+                                <div class="submission-file-info">
+                                    <span class="submission-file-icon">${getIcon(s.submission_type)}</span>
+                                    <div>
+                                        <div class="submission-file-name">${getTitle(s)}</div>
+                                        <div class="submission-file-meta">${new Date(s.created_at).toLocaleString()}${s.is_private ? ' · 🔒' : ''}</div>
+                                    </div>
+                                </div>
+                                <span class="badge badge-success">已提交</span>
+                            </div>
+                            ${s.submission_type === 'text' && s.text_content ? `<div style="margin-top:8px;padding:8px;background:#fff;border-radius:4px;font-size:13px;color:#666;max-height:60px;overflow:hidden;">${escapeHtml(s.text_content).substring(0, 100)}${s.text_content.length > 100 ? '...' : ''}</div>` : ''}
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function getIcon(type) {
+            return { text: '📝', questionnaire: '📋', image: '🖼️', file: '📄' }[type] || '📄';
+        }
+
+        function getTitle(s) {
+            if (s.submission_type === 'text') return '文本内容';
+            if (s.submission_type === 'questionnaire') return '问卷答案';
+            return s.original_filename || '文件';
+        }
+
+        function onFileSelect(type) {
+            const input = document.getElementById(type === 'image' ? 'image-input' : 'file-input');
+            if (input.files.length > 0) {
+                selectedFiles[type] = input.files[0];
+                const container = document.getElementById(`${type}-selected`);
+                container.style.display = 'block';
+                container.innerHTML = `<div class="selected-file"><span class="name">✓ ${selectedFiles[type].name} (${formatSize(selectedFiles[type].size)})</span><span class="remove" onclick="removeFile('${type}')">✕ 移除</span></div>`;
+                document.getElementById(`upload-area-${type}`).classList.add('has-file');
+                
+                if (type === 'image') {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        document.getElementById('preview-img').src = e.target.result;
+                        document.getElementById('image-preview').style.display = 'block';
+                    };
+                    reader.readAsDataURL(selectedFiles[type]);
+                }
+            }
+        }
+
+        function removeFile(type) {
+            selectedFiles[type] = null;
+            document.getElementById(type === 'image' ? 'image-input' : 'file-input').value = '';
+            document.getElementById(`${type}-selected`).style.display = 'none';
+            document.getElementById(`upload-area-${type}`).classList.remove('has-file');
+            if (type === 'image') document.getElementById('image-preview').style.display = 'none';
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+        }
+
+        // 一键提交所有内容
+        async function submitAll() {
+            if (!selectedMemberId) { showToast('请先选择你的名字', 'error'); return; }
+            
+            const ct = taskData.collect_types || { file: true };
+            const isPrivate = document.getElementById('is-private')?.checked || false;
+            const btn = document.getElementById('submit-btn');
+            
+            btn.disabled = true;
+            btn.textContent = '提交中...';
+            
+            let successCount = 0;
+            let errorMsg = '';
+            let itemIndex = 1;
+
+            try {
+                // 1. 提交文件
+                if (ct.file && selectedFiles.file) {
+                    const formData = new FormData();
+                    formData.append('file', selectedFiles.file);
+                    const res = await fetch(`${API_BASE}/submissions/?task_id=${taskId}&member_id=${selectedMemberId}&is_private=${isPrivate}&item_index=${itemIndex}&submission_type=file`, { method: 'POST', body: formData });
+                    if (res.ok) { successCount++; itemIndex++; }
+                    else { const d = await res.json(); errorMsg += `文件: ${d.detail?.message || d.detail || '失败'}\n`; }
+                }
+
+                // 2. 提交图片
+                if (ct.image && selectedFiles.image) {
+                    const formData = new FormData();
+                    formData.append('file', selectedFiles.image);
+                    const res = await fetch(`${API_BASE}/submissions/?task_id=${taskId}&member_id=${selectedMemberId}&is_private=${isPrivate}&item_index=${itemIndex}&submission_type=image`, { method: 'POST', body: formData });
+                    if (res.ok) { successCount++; itemIndex++; }
+                    else { const d = await res.json(); errorMsg += `图片: ${d.detail?.message || d.detail || '失败'}\n`; }
+                }
+
+                // 3. 提交文本
+                if (ct.text) {
+                    const textContent = document.getElementById('text-content').value.trim();
+                    if (textContent) {
+                        const res = await fetch(`${API_BASE}/submissions/text`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ task_id: parseInt(taskId), member_id: parseInt(selectedMemberId), text_content: textContent, is_private: isPrivate, item_index: itemIndex })
+                        });
+                        if (res.ok) { successCount++; itemIndex++; }
+                        else { const d = await res.json(); errorMsg += `文本: ${d.detail?.message || d.detail || '失败'}\n`; }
+                    }
+                }
+
+                // 4. 提交问卷
+                if (ct.questionnaire) {
+                    const answers = collectQuestionnaireAnswers();
+                    if (answers) {
+                        const res = await fetch(`${API_BASE}/submissions/questionnaire`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ task_id: parseInt(taskId), member_id: parseInt(selectedMemberId), answers: answers, is_private: isPrivate, item_index: itemIndex })
+                        });
+                        if (res.ok) { successCount++; }
+                        else { const d = await res.json(); errorMsg += `问卷: ${d.detail?.message || d.detail || '失败'}\n`; }
+                    }
+                }
+
+                if (successCount > 0) {
+                    showSuccessModal(successCount);
+                    resetForm();
+                    await loadMySubmissions();
+                    await loadMembers();
+                    if (!taskData.admin_only_visible) renderSubmissionStatus();
+                    updateProgress();
+                } else if (errorMsg) {
+                    showToast(errorMsg || '提交失败', 'error');
+                } else {
+                    showToast('请至少填写一项内容', 'error');
+                }
+            } catch (e) {
+                showToast('提交出错: ' + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📤 一键提交全部内容';
+            }
+        }
+
+        function collectQuestionnaireAnswers() {
+            const config = taskData.questionnaire_config || [];
+            if (config.length === 0) return null;
+            
+            const answers = {};
+            for (let i = 0; i < config.length; i++) {
+                const q = config[i];
+                let value = null;
+                
+                if (q.type === 'text') {
+                    const input = document.querySelector(`.q-input[data-idx="${i}"]`);
+                    value = input ? input.value.trim() : '';
+                } else if (q.type === 'radio') {
+                    const checked = document.querySelector(`input[name="q${i}"]:checked`);
+                    value = checked ? checked.value : '';
+                } else if (q.type === 'checkbox') {
+                    const checked = document.querySelectorAll(`input[name="q${i}"]:checked`);
+                    value = Array.from(checked).map(c => c.value);
+                } else if (q.type === 'image' || q.type === 'file') {
+                    const fileInput = document.querySelector(`.q-file[data-idx="${i}"]`);
+                    value = (fileInput && fileInput.files && fileInput.files.length > 0) ? fileInput.files[0].name : '';
+                }
+                
+                if (q.required && (!value || (Array.isArray(value) && value.length === 0))) {
+                    let msg = q.type === 'image' ? '请上传图片' : q.type === 'file' ? '请上传文件' : '请填写';
+                    showToast(`${msg}: ${q.title}`, 'error');
+                    return null;
+                }
+                answers[i] = value;
+            }
+            return answers;
+        }
+
+        function resetForm() {
+            selectedFiles = { file: null, image: null };
+            document.getElementById('file-input').value = '';
+            document.getElementById('image-input').value = '';
+            document.getElementById('file-selected').style.display = 'none';
+            document.getElementById('image-selected').style.display = 'none';
+            document.getElementById('image-preview').style.display = 'none';
+            document.getElementById('upload-area-file')?.classList.remove('has-file');
+            document.getElementById('upload-area-image')?.classList.remove('has-file');
+            document.getElementById('text-content').value = '';
+            // 重置问卷
+            document.querySelectorAll('.q-input').forEach(el => el.value = '');
+            document.querySelectorAll('.q-file').forEach(el => el.value = '');
+            document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => el.checked = false);
+        }
+
+        function updateProgress() {
+            const submitted = allMembers.filter(m => m.has_submitted).length;
+            const total = allMembers.length;
+            const progress = total > 0 ? (submitted / total * 100) : 0;
+            document.getElementById('progress-bar').style.width = progress + '%';
+            document.getElementById('progress-text').textContent = `已提交 ${submitted}/${total} 人 (${progress.toFixed(1)}%)`;
+        }
+
+        function showSuccessModal(count) {
+            document.getElementById('success-msg').textContent = `成功提交了 ${count} 项内容`;
+            document.getElementById('success-modal').classList.add('active');
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('success-modal').classList.remove('active');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function setupDragDrop() {
+            ['file', 'image'].forEach(type => {
+                const area = document.getElementById(`upload-area-${type}`);
+                if (area) {
+                    area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
+                    area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+                    area.addEventListener('drop', e => {
+                        e.preventDefault();
+                        area.classList.remove('dragover');
+                        if (e.dataTransfer.files.length > 0) {
+                            const input = document.getElementById(type === 'image' ? 'image-input' : 'file-input');
+                            input.files = e.dataTransfer.files;
+                            onFileSelect(type);
+                        }
+                    });
+                }
+            });
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+    </script>
+</body>
+</html>
